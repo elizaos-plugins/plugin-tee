@@ -22,5 +22,29 @@
   },
   "peerDependencies": {
     "whatwg-url": "7.1.0"
+  },
+  "pluginType": "elizaos:plugin:1.0.0",
+  "pluginParameters": {
+      "type": "object",
+      "required": ["teeMode", "walletSecretSalt", "dstackSimulatorEndpoint"],
+      "properties": {
+          "teeMode": {
+              "type": "string",
+              "description": "Mode for TEE operation (LOCAL, DOCKER, PRODUCTION)"
+          },
+          "walletSecretSalt": {
+              "type": "string",
+              "description": "Secret salt for wallet operations"
+          },
+          "dstackSimulatorEndpoint": {
+              "type": "string",
+              "description": "Endpoint URL for TEE simulator (optional)"
+          }
+      }
+  },
+  "pluginEnv": {
+      "TEE_MODE": "teeMode",
+      "WALLET_SECRET_SALT": "walletSecretSalt",
+      "DSTACK_SIMULATOR_ENDPOINT": "dstackSimulatorEndpoint"
   }
 }
