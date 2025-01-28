@@ -36,5 +36,25 @@
     },
     "peerDependencies": {
         "whatwg-url": "7.1.0"
+    },
+    "agentConfig": {
+        "pluginType": "elizaos:client:1.0.0",
+        "pluginParameters": {
+            "TEE_MODE": {
+                "type": "string",
+                "enum": ["sgx", "nitro", "disabled"],
+                "description": "Trusted Execution Environment mode"
+            },
+            "WALLET_SECRET_SALT": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Salt for wallet secret generation"
+            },
+            "BIRDEYE_API_KEY": {
+                "type": "string",
+                "minLength": 1,
+                "description": "API key for Birdeye service"
+            }
+        }
     }
 }
