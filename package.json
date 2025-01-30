@@ -1,5 +1,5 @@
 {
-    "name": "@elizaos/plugin-tee",
+    "name": "@elizaos-plugins/plugin-tee",
     "version": "0.1.8+build.1",
     "type": "module",
     "main": "dist/index.js",
@@ -42,7 +42,11 @@
         "pluginParameters": {
             "TEE_MODE": {
                 "type": "string",
-                "enum": ["sgx", "nitro", "disabled"],
+                "enum": [
+                    "sgx",
+                    "nitro",
+                    "disabled"
+                ],
                 "description": "Trusted Execution Environment mode"
             },
             "WALLET_SECRET_SALT": {
