@@ -41,7 +41,7 @@ import {
   toHex,
   trim,
   wrapConstructor
-} from "./chunk-KSHJJL6X.js";
+} from "./chunk-NTU6R7BC.js";
 import "./chunk-PR4QN5HX.js";
 
 // src/providers/remoteAttestationProvider.ts
@@ -116,13 +116,22 @@ rtmr3: ${rtmrs[3]}f`
   }
 };
 var remoteAttestationProvider = {
-  get: async (runtime, _message, _state) => {
+  get: async (runtime, message, _state) => {
     const teeMode = runtime.getSetting("TEE_MODE");
     const provider = new RemoteAttestationProvider(teeMode);
     const agentId = runtime.agentId;
     try {
-      elizaLogger.log("Generating attestation for: ", agentId);
-      const attestation = await provider.generateAttestation(agentId, "raw");
+      const attestationMessage = {
+        agentId,
+        timestamp: Date.now(),
+        message: {
+          userId: message.userId,
+          roomId: message.roomId,
+          content: message.content.text
+        }
+      };
+      elizaLogger.log("Generating attestation for: ", JSON.stringify(attestationMessage));
+      const attestation = await provider.generateAttestation(JSON.stringify(attestationMessage));
       return `Your Agent's remote attestation is: ${JSON.stringify(attestation)}`;
     } catch (error) {
       console.error("Error in remote attestation provider:", error);
@@ -1379,10 +1388,11 @@ var DeriveKeyProvider = class {
     this.client = endpoint ? new TappdClient2(endpoint) : new TappdClient2();
     this.raProvider = new RemoteAttestationProvider(teeMode);
   }
-  async generateDeriveKeyAttestation(agentId, publicKey) {
+  async generateDeriveKeyAttestation(agentId, publicKey, subject) {
     const deriveKeyData = {
       agentId,
-      publicKey
+      publicKey,
+      subject
     };
     const reportdata = JSON.stringify(deriveKeyData);
     elizaLogger2.log(
@@ -1392,6 +1402,12 @@ var DeriveKeyProvider = class {
     elizaLogger2.log("Remote Attestation Quote generated successfully!");
     return quote;
   }
+  /**
+   * Derives a raw key from the given path and subject.
+   * @param path - The path to derive the key from. This is used to derive the key from the root of trust.
+   * @param subject - The subject to derive the key from. This is used for the certificate chain.
+   * @returns The derived key.
+   */
   async rawDeriveKey(path, subject) {
     try {
       if (!path || !subject) {
@@ -1408,6 +1424,13 @@ var DeriveKeyProvider = class {
       throw error;
     }
   }
+  /**
+   * Derives an Ed25519 keypair from the given path and subject.
+   * @param path - The path to derive the key from. This is used to derive the key from the root of trust.
+   * @param subject - The subject to derive the key from. This is used for the certificate chain.
+   * @param agentId - The agent ID to generate an attestation for.
+   * @returns An object containing the derived keypair and attestation.
+   */
   async deriveEd25519Keypair(path, subject, agentId) {
     try {
       if (!path || !subject) {
@@ -1434,6 +1457,13 @@ var DeriveKeyProvider = class {
       throw error;
     }
   }
+  /**
+   * Derives an ECDSA keypair from the given path and subject.
+   * @param path - The path to derive the key from. This is used to derive the key from the root of trust.
+   * @param subject - The subject to derive the key from. This is used for the certificate chain.
+   * @param agentId - The agent ID to generate an attestation for. This is used for the certificate chain.
+   * @returns An object containing the derived keypair and attestation.
+   */
   async deriveEcdsaKeypair(path, subject, agentId) {
     try {
       if (!path || !subject) {
@@ -1472,13 +1502,13 @@ var deriveKeyProvider = {
       try {
         const secretSalt = runtime.getSetting("WALLET_SECRET_SALT") || "secret_salt";
         const solanaKeypair = await provider.deriveEd25519Keypair(
-          "/",
           secretSalt,
+          "solana",
           agentId
         );
         const evmKeypair = await provider.deriveEcdsaKeypair(
-          "/",
           secretSalt,
+          "evm",
           agentId
         );
         return JSON.stringify({
@@ -1511,7 +1541,7 @@ function hexToUint8Array(hex) {
   }
   const array = new Uint8Array(hex.length / 2);
   for (let i = 0; i < hex.length; i += 2) {
-    const byte = parseInt(hex.slice(i, i + 2), 16);
+    const byte = Number.parseInt(hex.slice(i, i + 2), 16);
     if (isNaN(byte)) {
       throw new Error("Invalid hex string");
     }
@@ -1532,18 +1562,26 @@ var remoteAttestationAction = {
   name: "REMOTE_ATTESTATION",
   similes: ["REMOTE_ATTESTATION", "TEE_REMOTE_ATTESTATION", "TEE_ATTESTATION"],
   description: "Generate a remote attestation to prove that the agent is running in a TEE",
-  handler: async (runtime, _message, _state, _options, callback) => {
+  handler: async (runtime, message, _state, _options, callback) => {
     try {
-      const agentId = runtime.agentId;
+      const attestationMessage = {
+        agentId: runtime.agentId,
+        timestamp: Date.now(),
+        message: {
+          userId: message.userId,
+          roomId: message.roomId,
+          content: message.content.text
+        }
+      };
       const teeMode = runtime.getSetting("TEE_MODE");
       const provider = new RemoteAttestationProvider(teeMode);
-      const attestation = await provider.generateAttestation(agentId, "raw");
+      const attestation = await provider.generateAttestation(JSON.stringify(attestationMessage));
       const attestationData = hexToUint8Array(attestation.quote);
       const response = await uploadUint8Array(attestationData);
       const data = await response.json();
       callback({
         text: `Here's my \u{1F9FE} RA Quote \u{1FAE1}
-                https://proof.t16z.com/reports/${data.checksum}`,
+https://proof.t16z.com/reports/${data.checksum}`,
         action: "NONE"
       });
       return true;
@@ -1560,14 +1598,14 @@ var remoteAttestationAction = {
       {
         user: "{{user1}}",
         content: {
-          text: "If you are running in a TEE, generate a remote attestation"
+          text: "If you are running in a TEE, generate a remote attestation",
+          action: "REMOTE_ATTESTATION"
         }
       },
       {
         user: "{{user2}}",
         content: {
-          text: "Of course, one second...",
-          action: "REMOTE_ATTESTATION"
+          text: "Of course, one second..."
         }
       }
     ]
